@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instocks by Marketplace — WBR Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --bg2: #161b26;
+  --bg3: #1e2535;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8b92a8;
+  --text3: #555e75;
+  --red: #f05252;
+  --red-bg: rgba(240,82,82,0.1);
+  --red-border: rgba(240,82,82,0.25);
+  --yellow: #f5a623;
+  --yellow-bg: rgba(245,166,35,0.1);
+  --yellow-border: rgba(245,166,35,0.25);
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,0.1);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.1);
+  --accent: #6366f1;
+  --accent2: #818cf8;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.noise {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+/* HEADER */
+.header {
+  padding: 3rem 0 2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+.header-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; flex-wrap: wrap; }
+.header-left {}
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 0.5rem;
+}
+h1 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.header-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 0.5rem;
+}
+.header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-top: 0.25rem; }
+.badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.badge-yellow { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.25); }
+
+/* METRICS ROW */
+.metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 2.5rem; }
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+}
+.metric-card.danger::before { background: var(--red); }
+.metric-card.warn::before { background: var(--yellow); }
+.metric-card.ok::before { background: var(--green); }
+.metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; font-family: 'DM Mono', monospace; margin-bottom: 0.5rem; }
+.metric-value { font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -0.02em; line-height: 1; }
+.metric-value.red { color: var(--red); }
+.metric-value.yellow { color: var(--yellow); }
+.metric-value.small { font-size: 18px; }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* SECTION */
+.section { margin-bottom: 3rem; }
+.section-heading {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-heading .dot-accent {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0;
+}
+
+/* MARKETPLACE BAR CHART */
+.mp-grid { display: flex; flex-direction: column; gap: 6px; }
+.mp-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 52px 70px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s;
+}
+.mp-row:hover { border-color: var(--border2); }
+.mp-name { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-bar-track { height: 6px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+.mp-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+.mp-pct { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; text-align: right; }
+.mp-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); text-align: right; }
+
+/* OVERALL BULLETS */
+.overall-bullets { display: flex; flex-direction: column; gap: 8px; }
+.overall-bullet {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+}
+.overall-bullet:hover { border-color: var(--border2); }
+.bullet-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.85;
+}
+.bullet-text { font-size: 13.5px; line-height: 1.6; color: var(--text); }
+.bullet-text strong { color: #fff; font-weight: 500; }
+
+/* IM GRID */
+.im-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.im-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.im-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.im-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+.im-avatar {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: #fff;
+  flex-shrink: 0; letter-spacing: 0.05em;
+}
+.im-name { font-weight: 500; font-size: 14px; color: #fff; }
+.im-pills { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-weight: 500;
+}
+.pill-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.pill-yellow { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+.pill-green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+.im-bullets { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.im-bullet {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 12.5px; line-height: 1.55; color: var(--text2);
+}
+.im-bullet strong { color: var(--text); font-weight: 500; }
+.sev-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+}
+.sev-dot.red { background: var(--red); box-shadow: 0 0 6px rgba(240,82,82,0.5); }
+.sev-dot.yellow { background: var(--yellow); box-shadow: 0 0 6px rgba(245,166,35,0.4); }
+
+/* FOOTER */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 0;
+  margin-top: 3rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* FILTER BAR */
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.filter-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+.filter-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+@media (max-width: 640px) {
+  .header-inner { flex-direction: column; }
+  .mp-row { grid-template-columns: 120px 1fr 40px; }
+  .mp-count { display: none; }
+  .im-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="container">
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <p class="eyebrow">IM Dashboard · L7 Report</p>
+        <h1>Instocks by Marketplace</h1>
+        <p class="header-date" id="report-date"></p>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-blue">205 active brands</span>
+        <span class="badge badge-red">62 red (&lt;50%)</span>
+        <span class="badge badge-yellow">118 yellow (50–85%)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- METRICS -->
+  <div class="metrics-row">
+    <div class="metric-card danger">
+      <div class="metric-label">Red issues</div>
+      <div class="metric-value red">62</div>
+      <div class="metric-sub">brands below 50%</div>
+    </div>
+    <div class="metric-card warn">
+      <div class="metric-label">Yellow issues</div>
+      <div class="metric-value yellow">118</div>
+      <div class="metric-sub">brands 50–85%</div>
+    </div>
+    <div class="metric-card danger">
+      <div class="metric-label">Worst marketplace</div>
+      <div class="metric-value small">Kohl's</div>
+      <div class="metric-sub">75% of brands below 85%</div>
+    </div>
+    <div class="metric-card warn">
+      <div class="metric-label">Most impacted (volume)</div>
+      <div class="metric-value small">Walmart US</div>
+      <div class="metric-sub">65 brands below 85%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Active IMs</div>
+      <div class="metric-value">17</div>
+      <div class="metric-sub">inventory managers</div>
+    </div>
+  </div>
+
+  <!-- MARKETPLACE HEALTH -->
+  <div class="section">
+    <div class="section-heading"><span class="dot-accent"></span>Marketplace health — % of brands below 85% instock</div>
+    <div class="mp-grid" id="mp-grid"></div>
+  </div>
+
+  <!-- OVERALL PRIORITIES -->
+  <div class="section">
+    <div class="section-heading"><span class="dot-accent"></span>5 overall action priorities</div>
+    <div class="overall-bullets" id="overall-bullets"></div>
+  </div>
+
+  <!-- IM SECTION -->
+  <div class="section">
+    <div class="section-heading"><span class="dot-accent"></span>Inventory manager summaries</div>
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" data-filter="all">All IMs</button>
+      <button class="filter-btn" data-filter="red">Has red issues</button>
+      <button class="filter-btn" data-filter="yellow">Yellow only</button>
+    </div>
+    <div class="im-grid" id="im-grid"></div>
+  </div>
+
+  <footer class="footer">
+    <span>WBR · Instocks by Marketplace L7</span>
+    <span id="footer-date"></span>
+  </footer>
+</div>
+
+<script>
+const now = new Date();
+const fmt = d => d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+document.getElementById('report-date').textContent = 'Generated ' + fmt(now);
+document.getElementById('footer-date').textContent = fmt(now);
+
+const mpData = [
+  { name: "Kohl's",           pct: 75.0, below85: 3,  total: 4   },
+  { name: "eBay US",          pct: 55.6, below85: 20, total: 36  },
+  { name: "Best Buy US",      pct: 50.0, below85: 2,  total: 4   },
+  { name: "Target+",          pct: 36.4, below85: 20, total: 55  },
+  { name: "TikTok US",        pct: 34.8, below85: 48, total: 138 },
+  { name: "Walmart US",       pct: 31.7, below85: 65, total: 205 },
+  { name: "Amazon CA",        pct: 31.4, below85: 16, total: 51  },
+  { name: "Walmart CA",       pct: 28.6, below85: 2,  total: 7   },
+  { name: "Macys.com",        pct: 26.9, below85: 7,  total: 26  },
+  { name: "Nordstrom",        pct: 25.0, below85: 3,  total: 12  },
+  { name: "Kroger.com",       pct: 25.0, below85: 2,  total: 8   },
+  { name: "Amazon CA from US",pct: 12.5, below85: 2,  total: 16  },
+  { name: "Amazon.com",       pct: 8.7,  below85: 17, total: 195 },
+  { name: "Shopify US",       pct: 0.0,  below85: 0,  total: 3   },
+];
+
+const mpGrid = document.getElementById('mp-grid');
+mpData.forEach(d => {
+  const color = d.pct >= 50 ? '#f05252' : d.pct >= 30 ? '#f5a623' : d.pct >= 15 ? '#fbbf24' : '#34d399';
+  const row = document.createElement('div');
+  row.className = 'mp-row';
+  row.innerHTML = `
+    <span class="mp-name" title="${d.name}">${d.name}</span>
+    <div class="mp-bar-track"><div class="mp-bar-fill" style="width:${d.pct}%;background:${color};"></div></div>
+    <span class="mp-pct" style="color:${color}">${d.pct.toFixed(0)}%</span>
+    <span class="mp-count">${d.below85}/${d.total} brands</span>
+  `;
+  mpGrid.appendChild(row);
+});
+
+const overallBullets = [
+  { n:1, text: "<strong>Kohl's is the most impaired marketplace</strong> with 75% of reporting brands below 85% instock (3/4). Escalate replenishment orders immediately for Forever 21 - Brands Unlimited (75.3%), Lively (73.1%), and Kreg (50.0%) — all three brands need purchase orders or inventory transfers prioritized before the next WBR cycle." },
+  { n:2, text: "<strong>eBay US has 55.6% of brands below 85%</strong> (20/36), the second-worst marketplace by rate. Key red brands include LEATHERMAN (7.4%), Kano Labs (21.3%), Lodge Manufacturing (40.6%), Feetures (14.5%), and FROG (37.4%) — review eBay listing health, fulfillment settings, and suppressed inventory across these accounts to identify root cause by brand." },
+  { n:3, text: "<strong>TikTok US has the highest absolute count of impaired brands:</strong> 48 brands below 85% instock out of 138 reporting (34.8%), with 19 in the red. Brands like Azdome (0%), Reebok - Original Fit Factory (0%), EarthKind (0%), ADATA (0%), and Orgain (24.3%) need urgent inventory investigation — TikTok US likely has FBT compliance or stock replenishment gaps." },
+  { n:4, text: "<strong>Walmart US shows 65 of 205 brands below 85% instock (31.7%),</strong> with 17 in the red — the largest absolute count of any marketplace. Priority brands include Kraus (6.9%), LTH (20.5%), Lister (13.0%), Lovebug (14.3%), and Genuine Health (14.6%). Cross-reference Walmart US DSV and WFS fill rates; low instocks here often stem from PO rejections or late shipments." },
+  { n:5, text: "<strong>Amazon CA is the worst-performing Canadian marketplace</strong> at 31.4% of brands below 85% (16/51), with 13 in the red. ADATA (0%), AmScope (0%), AirCat (0%), Adventure Ready Brands (0%), and Apex Tool Group (0%) are fully out of stock. Investigate FBA shipment delays or ASIN suppression and expedite FBA restocks or cross-border shipments." },
+];
+
+const obDiv = document.getElementById('overall-bullets');
+overallBullets.forEach(b => {
+  const div = document.createElement('div');
+  div.className = 'overall-bullet';
+  div.innerHTML = `<span class="bullet-num">${b.n}</span><span class="bullet-text">${b.text}</span>`;
+  obDiv.appendChild(div);
+});
+
+const imData = [
+  { name:"Ben Draper", red:3, yellow:12, bullets:[
+    {sev:"red", text:"<strong>Apex Tool Group</strong> is 0% in-stock on Amazon CA and 50% on Walmart US — create an emergency replenishment shipment to Canada immediately and review Walmart allocation."},
+    {sev:"red", text:"<strong>KONG</strong> is 1.7% on Amazon CA and 50.8% on Walmart US — review PO status and ensure units are allocated to both marketplaces before sell-out risk escalates."},
+    {sev:"red", text:"<strong>Dr Mercola</strong> is at 12.5% on Amazon CA — check for Canadian ASIN restrictions or FBA shipment delays and push a restock shipment to Amazon Canada FCs."},
+    {sev:"yellow", text:"<strong>Lewis Lifetime Tools (Yard Butler)</strong> has 5 marketplace issues (TikTok US 28.6%, Best Buy US 54.8%, Kohl's 68.0%, Walmart US 71.7%, eBay US 84.1%) — conduct a full inventory audit and coordinated replenishment push."},
+    {sev:"yellow", text:"<strong>FINIS</strong> is below 85% on TikTok US (77.0%), Target+ (80.7%), and eBay US (83.0%) — coordinate with the brand to increase inventory allocation to these channels."},
+  ]},
+  { name:"Georgia Christodoulou", red:8, yellow:7, bullets:[
+    {sev:"red", text:"<strong>Nesugar</strong> is 0% in-stock on both Amazon.com and Walmart US — verify whether listings are suppressed or inventory is exhausted, and escalate a restock immediately."},
+    {sev:"red", text:"<strong>Living Proof</strong> (6.2%) and <strong>Murad</strong> (12.1%) are critically low on both TikTok US and Walmart US — check TikTok content/inventory compliance and submit emergency Walmart replenishment."},
+    {sev:"red", text:"<strong>ZQuiet</strong> is 0% on TikTok US and 33.3% on Walmart US — confirm TikTok shop inventory is correctly allocated; submit emergency Walmart replenishment for any unfilled POs."},
+    {sev:"yellow", text:"<strong>Wonderfold</strong> is at 61.2% on both Amazon.com and Walmart US — create a replenishment plan to recover both channels above 85% before losing buy box eligibility."},
+    {sev:"yellow", text:"<strong>Podium Nutrition</strong> (53.8% TikTok, 76.9% Walmart) and <strong>Molekule</strong> (68.8% TikTok, 84.4% Walmart) both show dual-channel issues — split inventory allocation between TikTok and Walmart to shore up both channels."},
+  ]},
+  { name:"Jack Maley", red:4, yellow:7, bullets:[
+    {sev:"red", text:"<strong>LEATHERMAN</strong> is at 7.4% on eBay US — review eBay listing status, check for suppressed or inactive listings, and ensure sufficient inventory is allocated to the eBay channel."},
+    {sev:"red", text:"<strong>MediNatura</strong> is at 40.5% on TikTok US and 68.6% on Walmart US — investigate TikTok FBT compliance and submit a Walmart replenishment order."},
+    {sev:"red", text:"<strong>ResMed</strong> is at 49.1% on Amazon CA — check if shipments to Canadian FCs have been delayed or if the ASIN is suppressed; escalate a priority FBA Canada restock."},
+    {sev:"red", text:"<strong>Kreg</strong> is at 48.6% on eBay US and 50.0% on Target+ — review eBay listing health and submit Target+ replenishment; both channels are below the 50% threshold."},
+    {sev:"yellow", text:"<strong>LEATHERMAN</strong> also has issues on TikTok US (66.3%) and Walmart US (74.2%) — prioritize a brand-level inventory review and coordinate allocation across eBay, TikTok, and Walmart US."},
+  ]},
+  { name:"Jack Sullivan", red:6, yellow:4, bullets:[
+    {sev:"red", text:"<strong>Kraus</strong> is at 6.9% on both TikTok US and Walmart US — check TikTok FBT shipments and submit urgent Walmart WFS/DSV replenishment to prevent further stockout."},
+    {sev:"red", text:"<strong>LTH</strong> is at 20.5% on Amazon.com and Walmart US — review FBA and Walmart seller central inventory; identify if this is a supplier lead time issue and push expedited replenishment."},
+    {sev:"red", text:"<strong>Lodge Manufacturing</strong> is at 40.6% on eBay US — assess eBay listing and inventory settings; work with the brand to reallocate units or ship directly to eBay fulfillment."},
+    {sev:"red", text:"<strong>Weigh Safe</strong> is at 0% on eBay US, 64.8% on Walmart US, and 70.0% on TikTok US — audit eBay for listing suppression and create emergency replenishment for Walmart and TikTok."},
+    {sev:"yellow", text:"<strong>Lodge Manufacturing</strong> also shows 78.1% on Walmart US and 83.2% on TikTok US — recover eBay first, then address Walmart and TikTok before stock deteriorates to red status."},
+  ]},
+  { name:"Jessica Cowley", red:0, yellow:9, bullets:[
+    {sev:"yellow", text:"<strong>Kleenex</strong> is at 57.4% on Target+ — review Target+ replenishment compliance and determine if a vendor-managed inventory adjustment is needed to bring instocks above 85%."},
+    {sev:"yellow", text:"<strong>Klean Kanteen</strong> has issues on TikTok US (69.5%), Walmart US (83.5%), and Amazon CA (83.7%) — ensure FBA Canada, Walmart, and TikTok FBT shipments are coordinated this week."},
+    {sev:"yellow", text:"<strong>Standard Process - Possible</strong> is at 77.3% on TikTok US — confirm TikTok FBT inventory levels and send a replenishment before it drops to red status."},
+    {sev:"yellow", text:"<strong>Gimme Beauty</strong> is at 77.4% on TikTok US — review TikTok shop inventory allocation and coordinate a restock with the brand."},
+    {sev:"yellow", text:"<strong>Sylvania</strong> (81.9% Target+) and <strong>Royal Talens</strong> (83.8% Amazon.com and Walmart US) are both near the red threshold — submit replenishment for each now."},
+  ]},
+  { name:"John Alexander", red:5, yellow:0, bullets:[
+    {sev:"red", text:"<strong>Koia</strong> is at 0% on Amazon.com, TikTok US, and Walmart US — this brand is entirely out of stock across all 3 reporting marketplaces; escalate an emergency replenishment and check for listing suspension."},
+    {sev:"red", text:"<strong>Lockin</strong> is at 46.2% on both Amazon.com and Walmart US — verify whether this is a listing suppression issue or a true stockout; if stockout, submit POs immediately."},
+    {sev:"yellow", text:"With all current issues in the red, the priority this week is full resolution of <strong>Koia and Lockin</strong> across all affected marketplaces before any further sell-through occurs."},
+    {sev:"yellow", text:"For <strong>Koia</strong>, confirm with the brand if there are production or lead time constraints driving the triple-marketplace outage and assess whether temporary listing holds are needed."},
+    {sev:"yellow", text:"For <strong>Lockin</strong>, investigate whether the low instock on Amazon.com and Walmart US is tied to the same root cause (e.g., a single distribution warehouse issue)."},
+  ]},
+  { name:"Katelyn Dyer", red:0, yellow:5, bullets:[
+    {sev:"yellow", text:"<strong>Garden of Life</strong> has below-85% instocks on Amazon.com (51.2%), Walmart US (64.7%), and TikTok US (78.2%) — submit replenishment across all three channels this week."},
+    {sev:"yellow", text:"<strong>Host Defense</strong> is at 76.0% on Target+ — review Target+ inventory submission compliance and check whether a replenishment order is pending or rejected."},
+    {sev:"yellow", text:"<strong>Nutricia - Real Food Blends</strong> is at 84.7% on TikTok US — send a proactive TikTok FBT replenishment this week to maintain above 85%."},
+    {sev:"yellow", text:"All issues in this portfolio are yellow — use this window to proactively address <strong>Garden of Life</strong> across three channels before instocks deteriorate into red status."},
+    {sev:"yellow", text:"Monitor <strong>DIVA, Hims & Hers,</strong> and the Nutricia family closely — focus this week's replenishment energy on Garden of Life and Host Defense."},
+  ]},
+  { name:"Matt Goodwin", red:4, yellow:12, bullets:[
+    {sev:"red", text:"<strong>Feetures</strong> has 5 marketplace issues: eBay US (14.5%), Macys.com (25.0%), Walmart US (65.8%), Target+ (66.6%), TikTok US (78.4%) — conduct a full channel inventory audit and coordinate a multi-channel restock with the brand."},
+    {sev:"red", text:"<strong>FROG</strong> is at 37.4% on eBay US with additional issues on Walmart US (70.0%) and TikTok US (72.8%) — review eBay listing health and submit replenishment for Walmart and TikTok."},
+    {sev:"red", text:"<strong>Adventure Ready Brands</strong> is 0% on Amazon CA and 72.3% on Walmart US — file an emergency FBA Canada restock and review whether the CA listing is suppressed."},
+    {sev:"yellow", text:"<strong>Superfeet</strong> is at 75.0% on Macys.com and 75.8% on Target+ — submit replenishment orders for both channels this week before instocks fall below 50%."},
+    {sev:"yellow", text:"<strong>TUMI</strong> is at 50.5% on Amazon CA and 74.3% on Walmart US — investigate Canadian FBA allocation and ensure Walmart replenishment is submitted."},
+  ]},
+  { name:"Matt Humphries", red:11, yellow:10, bullets:[
+    {sev:"red", text:"<strong>Forever 21</strong> (Brands Unlimited & Mark Edwards) are critically low across TikTok US (33.4%/26.9%), Target+ (11.0%), Walmart US (29.5%), and Kohl's (75.3%) — urgent inventory audit and coordinated restock needed across all four channels."},
+    {sev:"red", text:"<strong>Lovebug</strong> is at 14.3% on both Amazon.com and Walmart US — if stock exists, reallocate units to FBA and Walmart WFS immediately."},
+    {sev:"red", text:"<strong>Genuine Health</strong> is at 14.6% on both Amazon CA and Walmart US — push a priority FBA Canada shipment and submit Walmart replenishment before the brand goes to 0%."},
+    {sev:"red", text:"<strong>Reebok - Vitalist</strong> and <strong>Reebok - Original Fit Factory</strong> both have 0% on TikTok US, with Vitalist also 0% on Walmart US — investigate TikTok FBT compliance and restock both channels urgently."},
+    {sev:"yellow", text:"<strong>Cross</strong> (51.7% TikTok US) and <strong>Azdome</strong> (66.7% Walmart US) have manageable yellow flags — queue for replenishment after resolving the critical red issues above."},
+  ]},
+  { name:"McKay Pierce", red:0, yellow:3, bullets:[
+    {sev:"yellow", text:"<strong>Swanson</strong> is at 74.0% on Target+ and 84.0% on eBay US — submit a Target+ replenishment order and verify eBay inventory allocation to prevent both from falling further."},
+    {sev:"yellow", text:"<strong>Atrium - Douglas Laboratories</strong> is at 82.4% on TikTok US — proactively send a TikTok FBT replenishment to maintain above 85%."},
+    {sev:"yellow", text:"McKay's portfolio is the healthiest among active IMs with only 3 yellow flags and no red — use this cycle to focus on maintaining the strong instocks across the Atrium family, MegaFood, and Swanson's other channels."},
+    {sev:"yellow", text:"<strong>Swanson's</strong> eBay US flag (84.0%) is borderline — monitor closely and push a small replenishment order to prevent crossing into alert territory."},
+    {sev:"yellow", text:"<strong>MegaFood</strong> is at 87.9% on TikTok US, just above the 85% threshold — ensure TikTok FBT replenishment stays ahead of demand to maintain a comfortable buffer."},
+  ]},
+  { name:"Meagan Berry", red:7, yellow:18, bullets:[
+    {sev:"red", text:"<strong>AirCat</strong> is 0% on Amazon CA and 73.6% on Walmart US — submit an emergency FBA Canada shipment and Walmart replenishment; verify whether the Canadian ASIN is suppressed."},
+    {sev:"red", text:"<strong>Victorinox</strong> is 0% on Amazon CA and 42.9% on Walmart US — escalate FBA Canada restocking and submit a Walmart PO or WFS replenishment immediately."},
+    {sev:"red", text:"<strong>Philips Sonicare</strong> (42.9% Nordstrom, 70.3% eBay US) and <strong>Philips Avent</strong> (44.0% TikTok US) — review Nordstrom EDI compliance, eBay listing allocation, and TikTok FBT inventory for the Philips brand family."},
+    {sev:"red", text:"<strong>FPX-AIR</strong> has issues on eBay US (49.1%), Amazon.com (59.2%), and Walmart US (69.4%) — investigate the root cause and coordinate a multi-channel restock."},
+    {sev:"yellow", text:"<strong>Herbs Etc.</strong> has 4 marketplace flags (Nordstrom 43.0%, TikTok US 54.5%, eBay US 67.2%, Walmart US 72.9%) — after addressing red brands above, prioritize Herbs Etc. as the next multi-channel recovery effort."},
+  ]},
+  { name:"Peter Slusinski", red:7, yellow:8, bullets:[
+    {sev:"red", text:"<strong>Spicy Shelf</strong> is 0% on TikTok US and 46.1% on Walmart US — check TikTok FBT inventory compliance and submit an urgent Walmart replenishment."},
+    {sev:"red", text:"<strong>Spicy Spinner</strong> is 0% on TikTok US and 50.0% on Walmart US — same pattern as Spicy Shelf; investigate a potential shared fulfillment issue at the brand level."},
+    {sev:"red", text:"<strong>Vital Nutrients</strong> is 0% on eBay US and 63.0% on Walmart US — review eBay listing status (likely a suppression or account issue) and queue Walmart replenishment."},
+    {sev:"red", text:"<strong>God Is My Guide</strong> is at 33.3% on both Amazon.com and Walmart US — investigate FBA and Walmart WFS inventory; escalate with the brand if this is supplier-side."},
+    {sev:"yellow", text:"<strong>Coastal Pet</strong> has issues on Macys.com (54.8%), TikTok US (66.7%), and Walmart US (80.7%) — submit replenishment for all three channels; Macys.com is most urgent at below 55%."},
+  ]},
+  { name:"Scott Walton", red:5, yellow:8, bullets:[
+    {sev:"red", text:"<strong>Parkside Optical Inc.</strong> is 0% on Amazon CA, 15.4% on Target+, with additional flags on Walmart US (50.8%), TikTok US (63.8%), and eBay US (80.3%) — conduct an emergency inventory review across all 5 marketplaces."},
+    {sev:"red", text:"<strong>Select Brands</strong> is 0% on Amazon CA — verify if the Canadian FBA shipment is en route or if there is an ASIN suppression issue, and push a priority restock."},
+    {sev:"red", text:"<strong>EarthKind</strong> is 0% on TikTok US, 48.1% on Walmart US, and 66.7% on Target+ — review TikTok FBT compliance and submit Walmart and Target+ replenishment orders."},
+    {sev:"yellow", text:"<strong>Pura</strong> is at 75.2% on Macys.com — submit a replenishment order this week to prevent it from crossing into the red threshold."},
+    {sev:"yellow", text:"<strong>Metagenics</strong> is at 80.6% on Target+ — send a proactive Target+ replenishment to maintain health above 85%."},
+  ]},
+  { name:"Steven Hay", red:8, yellow:7, bullets:[
+    {sev:"red", text:"<strong>ADATA</strong> has critical failures across Amazon CA (0%), Macys.com (0%), TikTok US (0%), Walmart US (7.7%), and Amazon.com (31.0%) — escalate a brand-level emergency restock across all 5 channels and investigate a possible supply chain disruption."},
+    {sev:"red", text:"<strong>AmScope</strong> is 0% on Amazon CA with additional issues on Walmart US (67.4%) and Amazon.com (76.7%) — submit an FBA Canada emergency shipment and ensure US marketplace replenishment is queued."},
+    {sev:"red", text:"<strong>Eagle Creek</strong> is at 44.2% on Target+ and 71.9% on Walmart US — submit a Target+ replenishment immediately and follow up with Walmart WFS."},
+    {sev:"red", text:"<strong>Strider</strong> is at 32.2% on Walmart CA — investigate Canadian Walmart inventory and coordinate a cross-border replenishment or local supplier shipment."},
+    {sev:"yellow", text:"<strong>Strider</strong> also has issues on eBay US (76.5%), Walmart US (81.1%), and Target+ (84.7%) — after addressing the red flags, queue Strider replenishment for all three US channels."},
+  ]},
+  { name:"Tiana Christensen", red:3, yellow:6, bullets:[
+    {sev:"red", text:"<strong>Panasonic</strong> is 0% on Amazon CA from US with additional issues on TikTok US (43.0%), Walmart US (59.9%), and Target+ (64.5%) — investigate whether the CA from US listing is active and coordinate multi-channel restocking."},
+    {sev:"red", text:"<strong>Orgain</strong> is at 24.3% on Target+ and 62.1% on Walmart US — submit an urgent Target+ replenishment; at 24.3%, Orgain is at high risk of complete stockout."},
+    {sev:"yellow", text:"<strong>GE Appliances</strong> is at 61.6% on TikTok US and 84.1% on Walmart US — review TikTok FBT inventory allocation and submit Walmart replenishment to maintain above 85%."},
+    {sev:"yellow", text:"<strong>Kevin Murphy</strong> is at 73.6% on TikTok US — coordinate a TikTok FBT restock with the brand before next WBR cycle."},
+    {sev:"yellow", text:"<strong>Panasonic's</strong> Walmart US (59.9%) and Target+ (64.5%) flags should be addressed in the same replenishment push as the TikTok US flag — treating this as a single brand-level restock will be more efficient."},
+  ]},
+  { name:"Tommy Sutter", red:0, yellow:2, bullets:[
+    {sev:"yellow", text:"<strong>Twinlab Consolidation Corporation</strong> is at 78.9% on Macys.com and 82.3% on TikTok US — both are near the red threshold; submit Macys.com and TikTok FBT replenishment this week."},
+    {sev:"yellow", text:"Tommy's portfolio overall is in good health — <strong>Balance of Nature, EZ Melts, Nutrex Hawaii,</strong> and others are above 85% across reporting marketplaces; maintain current replenishment cadence."},
+    {sev:"yellow", text:"For <strong>Twinlab on TikTok US</strong> (82.3%), confirm that FBT inventory is in transit or in-queue; a small top-up shipment now will prevent a red flag in the next review cycle."},
+    {sev:"yellow", text:"For <strong>Twinlab on Macys.com</strong> (78.9%), review EDI compliance and submit a PO or vendor replenishment to recover the channel above 85% before week's end."},
+    {sev:"yellow", text:"Use this cycle's bandwidth advantage (only 2 issues) to proactively audit <strong>Twinlab's</strong> other channels — Walmart US (82.3%) is already on the border and could be the next flag."},
+  ]},
+  { name:"Ty Cann", red:8, yellow:10, bullets:[
+    {sev:"red", text:"<strong>Lister</strong> is at 13.0% on Amazon.com and Walmart US — critically low on both primary US marketplaces; investigate supplier or listing issues and submit emergency FBA and Walmart WFS replenishment."},
+    {sev:"red", text:"<strong>Australian Dream</strong> has multiple flags: Target+ (37.7%), TikTok US (47.1%), Walmart US (73.7%), and eBay US (83.5%) — prioritize Target+ and TikTok US first given their proximity to 0%."},
+    {sev:"red", text:"<strong>DKB Household</strong> is at 46.5% on Target+, 48.3% on Kroger.com, 74.4% on Walmart US, and 78.1% on TikTok US — submit replenishment POs for all four channels; Kroger.com requires advance EDI submission lead time."},
+    {sev:"red", text:"<strong>Kano Labs</strong> is at 21.3% on eBay US — review the eBay listing status and inventory allocation; if units are available, reallocate to the eBay channel immediately."},
+    {sev:"yellow", text:"<strong>Swissmar</strong> is at 41.5% on Walmart CA (red) and 67.8% on Walmart US (yellow) — investigate the Walmart Canada account health and submit replenishment for both Walmart CA and Walmart US."},
+  ]},
+];
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+}
+
+const imGrid = document.getElementById('im-grid');
+function renderIMs(filter) {
+  imGrid.innerHTML = '';
+  imData.forEach(im => {
+    if (filter === 'red' && im.red === 0) return;
+    if (filter === 'yellow' && im.red > 0) return;
+    const card = document.createElement('div');
+    card.className = 'im-card';
+    const redPill = im.red > 0 ? `<span class="pill pill-red">${im.red} red</span>` : '';
+    const yellowPill = im.yellow > 0 ? `<span class="pill pill-yellow">${im.yellow} yellow</span>` : '';
+    const greenPill = im.red === 0 && im.yellow <= 2 ? `<span class="pill pill-green">healthy</span>` : '';
+    card.innerHTML = `
+      <div class="im-header">
+        <div class="im-avatar">${initials(im.name)}</div>
+        <div>
+          <div class="im-name">${im.name}</div>
+          <div class="im-pills">${redPill}${yellowPill}${greenPill}</div>
+        </div>
+      </div>
+      <ul class="im-bullets">
+        ${im.bullets.map(b => `<li class="im-bullet"><span class="sev-dot ${b.sev}"></span><span>${b.text}</span></li>`).join('')}
+      </ul>
+    `;
+    imGrid.appendChild(card);
+  });
+}
+
+renderIMs('all');
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderIMs(btn.dataset.filter);
+  });
+});
+</script>
+</body>
+</html>
