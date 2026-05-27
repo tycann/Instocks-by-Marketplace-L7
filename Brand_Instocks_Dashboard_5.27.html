@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Instocks By Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --text: #e8ecf5;
+    --muted: #6b7591;
+    --accent: #4f8ef7;
+    --healthy: #22c55e;
+    --caution: #eab308;
+    --severe: #ef4444;
+    --critical: #a855f7;
+    --healthy-bg: rgba(34,197,94,0.10);
+    --caution-bg: rgba(234,179,8,0.10);
+    --severe-bg: rgba(239,68,68,0.10);
+    --critical-bg: rgba(168,85,247,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.3;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 36px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+  .header h1 {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .header .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .header-right {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .summary-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .summary-tile:hover { transform: translateY(-2px); }
+  .summary-tile.caution { border-color: rgba(234,179,8,0.3); }
+  .summary-tile.severe { border-color: rgba(239,68,68,0.3); }
+  .summary-tile.critical { border-color: rgba(168,85,247,0.3); }
+  .summary-tile::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+  }
+  .summary-tile.caution::before { background: var(--caution); }
+  .summary-tile.severe::before { background: var(--severe); }
+  .summary-tile.critical::before { background: var(--critical); }
+
+  .tile-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .tile-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tile-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tile-count {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .summary-tile.caution .tile-count { color: var(--caution); }
+  .summary-tile.severe .tile-count { color: var(--severe); }
+  .summary-tile.critical .tile-count { color: var(--critical); }
+  .tile-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .tile-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  .summary-tile:hover .tile-toggle { color: var(--text); }
+  .tile-toggle-arrow {
+    transition: transform 0.25s;
+    font-size: 10px;
+  }
+  .tile-toggle-arrow.open { transform: rotate(180deg); }
+
+  .summary-dropdown {
+    display: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    margin-top: -10px;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+  }
+  .summary-dropdown.open { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .dropdown-search {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dropdown-search input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    outline: none;
+  }
+  .dropdown-search input:focus { border-color: var(--accent); }
+  .dropdown-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .dropdown-list::-webkit-scrollbar { width: 4px; }
+  .dropdown-list::-webkit-scrollbar-track { background: transparent; }
+  .dropdown-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 16px;
+    transition: background 0.15s;
+    gap: 12px;
+  }
+  .dropdown-item:hover { background: var(--surface); }
+  .dropdown-brand {
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .dropdown-mp {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .dropdown-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .section-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(79,142,247,0.1);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    min-width: 200px;
+    transition: border-color 0.2s;
+  }
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  .filter-select:focus { border-color: var(--accent); }
+  .filter-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-right: -4px;
+  }
+
+  .brands-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .brand-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .brand-row.has-critical { border-left: 3px solid var(--critical); }
+  .brand-row.has-severe:not(.has-critical) { border-left: 3px solid var(--severe); }
+
+  .brand-header {
+    display: grid;
+    grid-template-columns: 32px 1fr auto auto auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .brand-header:hover { background: var(--surface2); }
+
+  .brand-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .brand-name {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand-im {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .badge-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+  .badge.healthy { background: var(--healthy-bg); color: var(--healthy); }
+  .badge.caution { background: var(--caution-bg); color: var(--caution); }
+  .badge.severe { background: var(--severe-bg); color: var(--severe); }
+  .badge.critical { background: var(--critical-bg); color: var(--critical); }
+
+  .brand-score-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    min-width: 72px;
+  }
+  .brand-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .brand-score-frac {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .score-bar-wrap {
+    width: 72px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  .brand-expand-icon {
+    font-size: 10px;
+    color: var(--muted);
+    transition: transform 0.25s;
+    padding-left: 4px;
+  }
+  .brand-expand-icon.open { transform: rotate(180deg); }
+
+  .brand-detail {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    padding: 16px;
+    animation: slideDown 0.2s ease;
+  }
+  .brand-detail.open { display: block; }
+  .detail-meta {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .detail-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .detail-meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail-meta-value {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .mp-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .mp-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .mp-table td {
+    padding: 9px 10px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(37,42,56,0.5);
+  }
+  .mp-table tr:last-child td { border-bottom: none; }
+  .mp-table .mp-name { font-weight: 500; }
+  .mp-table .mp-region {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .mp-table .mp-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .status-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+  .status-pill.healthy { background: var(--healthy-bg); color: var(--healthy); }
+  .status-pill.caution { background: var(--caution-bg); color: var(--caution); }
+  .status-pill.severe { background: var(--severe-bg); color: var(--severe); }
+  .status-pill.critical { background: var(--critical-bg); color: var(--critical); }
+
+  .instock-bar-wrap {
+    width: 100px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .instock-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .pagination-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .pagination-btns {
+    display: flex;
+    gap: 6px;
+  }
+  .page-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--surface2); border-color: var(--accent); }
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  @media (max-width: 768px) {
+    .summary-row { grid-template-columns: 1fr; }
+    .brand-header { grid-template-columns: 28px 1fr auto; }
+    .brand-im, .badge-row, .score-bar-wrap { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Brand Instocks By Marketplace</h1>
+    <span class="subtitle">// WBR Health Dashboard</span>
+    <div class="header-right">
+      <div>211 active brands</div>
+      <div style="margin-top:2px">CA + US marketplaces</div>
+    </div>
+  </div>
+
+  <div class="summary-row" id="summaryRow">
+
+    <div>
+      <div class="summary-tile caution" id="tile-caution" onclick="toggleSummary('caution')">
+        <div class="tile-header">
+          <div class="tile-dot" style="background:var(--caution)"></div>
+          <span class="tile-label">Caution</span>
+        </div>
+        <div class="tile-count" id="count-caution">—</div>
+        <div class="tile-sub">instances (50–85%)</div>
+        <div class="tile-toggle">
+          <span>view brands & marketplaces</span>
+          <span class="tile-toggle-arrow" id="arrow-caution">▼</span>
+        </div>
+      </div>
+      <div class="summary-dropdown" id="drop-caution">
+        <div class="dropdown-search"><input type="text" placeholder="Filter..." oninput="filterDropdown('caution', this.value)"></div>
+        <div class="dropdown-list" id="list-caution"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="summary-tile severe" id="tile-severe" onclick="toggleSummary('severe')">
+        <div class="tile-header">
+          <div class="tile-dot" style="background:var(--severe)"></div>
+          <span class="tile-label">Severe</span>
+        </div>
+        <div class="tile-count" id="count-severe">—</div>
+        <div class="tile-sub">instances (15–50%)</div>
+        <div class="tile-toggle">
+          <span>view brands & marketplaces</span>
+          <span class="tile-toggle-arrow" id="arrow-severe">▼</span>
+        </div>
+      </div>
+      <div class="summary-dropdown" id="drop-severe">
+        <div class="dropdown-search"><input type="text" placeholder="Filter..." oninput="filterDropdown('severe', this.value)"></div>
+        <div class="dropdown-list" id="list-severe"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="summary-tile critical" id="tile-critical" onclick="toggleSummary('critical')">
+        <div class="tile-header">
+          <div class="tile-dot" style="background:var(--critical)"></div>
+          <span class="tile-label">Critical</span>
+        </div>
+        <div class="tile-count" id="count-critical">—</div>
+        <div class="tile-sub">instances (0–15%)</div>
+        <div class="tile-toggle">
+          <span>view brands & marketplaces</span>
+          <span class="tile-toggle-arrow" id="arrow-critical">▼</span>
+        </div>
+      </div>
+      <div class="summary-dropdown" id="drop-critical">
+        <div class="dropdown-search"><input type="text" placeholder="Filter..." oninput="filterDropdown('critical', this.value)"></div>
+        <div class="dropdown-list" id="list-critical"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Brand Scorecard</span>
+    <span class="section-count" id="brandCount">—</span>
+  </div>
+
+  <div class="legend">
+    <span style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.8px">Health Scale:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--healthy)"></div>Healthy 85–100%</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--caution)"></div>Caution 50–85%</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--severe)"></div>Severe 15–50%</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--critical)"></div>Critical 0–15%</div>
+    <span style="color:var(--muted);font-size:10px;margin-left:8px">Score = earned pts ÷ max possible pts</span>
+  </div>
+
+  <div class="filter-bar">
+    <input class="filter-input" type="text" placeholder="Search brand..." oninput="applyFilters()" id="searchInput">
+    <span class="filter-label">IM:</span>
+    <select class="filter-select" id="imFilter" onchange="applyFilters()">
+      <option value="">All IMs</option>
+    </select>
+    <span class="filter-label">Status:</span>
+    <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+      <option value="">All</option>
+      <option value="has-critical">Has Critical</option>
+      <option value="has-severe">Has Severe</option>
+      <option value="has-caution">Has Caution</option>
+    </select>
+  </div>
+
+  <div class="brands-list" id="brandsList"></div>
+
+  <div class="pagination" id="pagination">
+    <div class="pagination-info" id="pageInfo">—</div>
+    <div class="pagination-btns" id="pageBtns"></div>
+  </div>
+
+</div>
+
+<script>
+const DASHBOARD_DATA = {"brands": [{"brand": "Rituals", "im": "Matt Humphries", "total_score": 0, "perfect_score": 3, "normalized_score": 0.0, "counts": {"healthy": 0, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}]}, {"brand": "Kraus", "im": "Jack Sullivan", "total_score": 0, "perfect_score": 3, "normalized_score": 0.0, "counts": {"healthy": 0, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0625, "status": "critical", "score": 0}]}, {"brand": "Living Proof", "im": "Georgia Christodoulou", "total_score": 0, "perfect_score": 3, "normalized_score": 0.0, "counts": {"healthy": 0, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0922, "status": "critical", "score": 0}]}, {"brand": "Murad", "im": "Georgia Christodoulou", "total_score": 0, "perfect_score": 3, "normalized_score": 0.0, "counts": {"healthy": 0, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0996, "status": "critical", "score": 0}]}, {"brand": "ADATA", "im": "Steven Hay", "total_score": 2, "perfect_score": 12, "normalized_score": 0.166667, "counts": {"healthy": 0, "caution": 0, "severe": 2, "critical": 2}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.2851, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.3931, "status": "severe", "score": 1}]}, {"brand": "LTH", "im": "Jack Sullivan", "total_score": 1, "perfect_score": 6, "normalized_score": 0.166667, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 1}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.1943, "status": "severe", "score": 1}]}, {"brand": "Genuine Health", "im": "Matt Humphries", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.1794, "status": "severe", "score": 1}]}, {"brand": "Victorinox", "im": "Meagan Berry", "total_score": 2, "perfect_score": 6, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.8331, "status": "caution", "score": 2}]}, {"brand": "Forever 21 - Mark Edwards", "im": "Matt Humphries", "total_score": 4, "perfect_score": 12, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 1, "severe": 2, "critical": 1}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.1077, "status": "critical", "score": 0}, {"marketplace": "TikTok US", "region": "US", "instock": 0.2197, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.2445, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.5109, "status": "caution", "score": 2}]}, {"brand": "God Is My Guide", "im": "Peter Slusinski", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.4286, "status": "severe", "score": 1}]}, {"brand": "Lister", "im": "Ty Cann", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.1793, "status": "severe", "score": 1}]}, {"brand": "Lockin", "im": "John Alexander", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.34, "status": "severe", "score": 1}]}, {"brand": "Lovebug", "im": "Matt Humphries", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.1556, "status": "severe", "score": 1}]}, {"brand": "Nesugar", "im": "Georgia Christodoulou", "total_score": 1, "perfect_score": 3, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.381, "status": "severe", "score": 1}]}, {"brand": "ZQuiet", "im": "Georgia Christodoulou", "total_score": 2, "perfect_score": 6, "normalized_score": 0.333333, "counts": {"healthy": 0, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.5, "status": "caution", "score": 2}]}, {"brand": "Apex Tool Group", "im": "Ben Draper", "total_score": 3, "perfect_score": 6, "normalized_score": 0.5, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9994, "status": "healthy", "score": 3}]}, {"brand": "KONG", "im": "Ben Draper", "total_score": 3, "perfect_score": 6, "normalized_score": 0.5, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0175, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9994, "status": "healthy", "score": 3}]}, {"brand": "Spicy Shelf", "im": "Peter Slusinski", "total_score": 3, "perfect_score": 6, "normalized_score": 0.5, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.918, "status": "healthy", "score": 3}]}, {"brand": "Parkside Optical Inc.", "im": "Scott Walton", "total_score": 8, "perfect_score": 15, "normalized_score": 0.533333, "counts": {"healthy": 1, "caution": 2, "severe": 1, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Target+", "region": "US", "instock": 0.1758, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.5239, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.7765, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9562, "status": "healthy", "score": 3}]}, {"brand": "Forever 21 - Brands Unlimited", "im": "Matt Humphries", "total_score": 8, "perfect_score": 15, "normalized_score": 0.533333, "counts": {"healthy": 0, "caution": 3, "severe": 2, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.2849, "status": "severe", "score": 1}, {"marketplace": "TikTok US", "region": "US", "instock": 0.3092, "status": "severe", "score": 1}, {"marketplace": "Target+", "region": "US", "instock": 0.7111, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.7481, "status": "caution", "score": 2}, {"marketplace": "Kohl's", "region": "US", "instock": 0.7481, "status": "caution", "score": 2}]}, {"brand": "Wahl Pro Barber/Stylist", "im": "Peter Slusinski", "total_score": 5, "perfect_score": 9, "normalized_score": 0.555556, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0816, "status": "critical", "score": 0}, {"marketplace": "Ebay US", "region": "US", "instock": 0.8286, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9954, "status": "healthy", "score": 3}]}, {"brand": "Panasonic", "im": "Tiana Christensen", "total_score": 9, "perfect_score": 15, "normalized_score": 0.6, "counts": {"healthy": 1, "caution": 3, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.6392, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.6986, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7849, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9606, "status": "healthy", "score": 3}]}, {"brand": "AmScope", "im": "Steven Hay", "total_score": 8, "perfect_score": 12, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.1, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.7911, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9422, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Azdome", "im": "Matt Humphries", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Coastal Pet", "im": "Peter Slusinski", "total_score": 12, "perfect_score": 18, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 2, "severe": 2, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "US", "instock": 0.2857, "status": "severe", "score": 1}, {"marketplace": "Macys.com", "region": "US", "instock": 0.4295, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.6369, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.8274, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9774, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Reebok - Vitalist", "im": "Matt Humphries", "total_score": 8, "perfect_score": 12, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.6, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.8848, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Allergy Research Group", "im": "Georgia Christodoulou", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.0964, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9319, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9998, "status": "healthy", "score": 3}]}, {"brand": "Australian Dream", "im": "Ty Cann", "total_score": 10, "perfect_score": 15, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 2, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.1193, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.6737, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7682, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9937, "status": "healthy", "score": 3}, {"marketplace": "Kroger.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Eagle Creek", "im": "Steven Hay", "total_score": 4, "perfect_score": 6, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.3723, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9866, "status": "healthy", "score": 3}]}, {"brand": "EarthKind", "im": "Scott Walton", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 0, "caution": 3, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6021, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.6984, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7619, "status": "caution", "score": 2}]}, {"brand": "FPX-AIR", "im": "Meagan Berry", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.4909, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.5645, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "FROG", "im": "Matt Goodwin", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.3155, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7488, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9966, "status": "healthy", "score": 3}]}, {"brand": "Garden of Life", "im": "Katelyn Dyer", "total_score": 4, "perfect_score": 6, "normalized_score": 0.666667, "counts": {"healthy": 0, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.5812, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7643, "status": "caution", "score": 2}]}, {"brand": "Koia", "im": "John Alexander", "total_score": 6, "perfect_score": 9, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "MediNatura", "im": "Jack Maley", "total_score": 4, "perfect_score": 6, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.4092, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9737, "status": "healthy", "score": 3}]}, {"brand": "Philips Sonicare", "im": "Meagan Berry", "total_score": 10, "perfect_score": 15, "normalized_score": 0.666667, "counts": {"healthy": 2, "caution": 1, "severe": 2, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.3868, "status": "severe", "score": 1}, {"marketplace": "Nordstrom", "region": "US", "instock": 0.4846, "status": "severe", "score": 1}, {"marketplace": "Ebay US", "region": "US", "instock": 0.779, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Shaquille O'Neal - Falic Fashion Group", "im": "Matt Humphries", "total_score": 2, "perfect_score": 3, "normalized_score": 0.666667, "counts": {"healthy": 0, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.5714, "status": "caution", "score": 2}]}, {"brand": "Spicy Spinner", "im": "Peter Slusinski", "total_score": 4, "perfect_score": 6, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.3043, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Wonderfold", "im": "Georgia Christodoulou", "total_score": 2, "perfect_score": 3, "normalized_score": 0.666667, "counts": {"healthy": 0, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.7606, "status": "caution", "score": 2}]}, {"brand": "Orgain", "im": "Tiana Christensen", "total_score": 4, "perfect_score": 6, "normalized_score": 0.666667, "counts": {"healthy": 1, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.159, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8721, "status": "healthy", "score": 3}]}, {"brand": "DKB Household", "im": "Ty Cann", "total_score": 15, "perfect_score": 21, "normalized_score": 0.714286, "counts": {"healthy": 3, "caution": 2, "severe": 2, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.4545, "status": "severe", "score": 1}, {"marketplace": "Kroger.com", "region": "US", "instock": 0.4828, "status": "severe", "score": 1}, {"marketplace": "TikTok US", "region": "US", "instock": 0.5068, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7554, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9876, "status": "healthy", "score": 3}, {"marketplace": "Best Buy US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Lowe's", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Lewis Lifetime Tools (Yard Butler)", "im": "Ben Draper", "total_score": 13, "perfect_score": 18, "normalized_score": 0.722222, "counts": {"healthy": 2, "caution": 3, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Best Buy US", "region": "US", "instock": 0.3731, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.6891, "status": "caution", "score": 2}, {"marketplace": "Kohl's", "region": "US", "instock": 0.7395, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.843, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9482, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9603, "status": "healthy", "score": 3}]}, {"brand": "AirCat", "im": "Meagan Berry", "total_score": 11, "perfect_score": 15, "normalized_score": 0.733333, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Target+", "region": "US", "instock": 0.8479, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.8671, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9487, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Feetures", "im": "Matt Goodwin", "total_score": 22, "perfect_score": 30, "normalized_score": 0.733333, "counts": {"healthy": 4, "caution": 4, "severe": 2, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.187, "status": "severe", "score": 1}, {"marketplace": "Macys.com", "region": "US", "instock": 0.3327, "status": "severe", "score": 1}, {"marketplace": "Target+", "region": "US", "instock": 0.6295, "status": "caution", "score": 2}, {"marketplace": "Hearst Media Services", "region": "US", "instock": 0.7036, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7974, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.7977, "status": "caution", "score": 2}, {"marketplace": "Nordstrom", "region": "US", "instock": 0.8585, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9518, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9879, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Adventure Ready Brands", "im": "Matt Goodwin", "total_score": 9, "perfect_score": 12, "normalized_score": 0.75, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9076, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9974, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Goodyear", "im": "Jack Maley", "total_score": 9, "perfect_score": 12, "normalized_score": 0.75, "counts": {"healthy": 2, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.2377, "status": "severe", "score": 1}, {"marketplace": "Amazon.ca", "region": "US", "instock": 0.8123, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9107, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9591, "status": "healthy", "score": 3}]}, {"brand": "Philips Avent", "im": "Meagan Berry", "total_score": 9, "perfect_score": 12, "normalized_score": 0.75, "counts": {"healthy": 2, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.29, "status": "severe", "score": 1}, {"marketplace": "Ebay US", "region": "US", "instock": 0.6364, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Reebok - Original Fit Factory", "im": "Matt Humphries", "total_score": 9, "perfect_score": 12, "normalized_score": 0.75, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9496, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9664, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9664, "status": "healthy", "score": 3}]}, {"brand": "Vital Nutrients", "im": "Peter Slusinski", "total_score": 9, "perfect_score": 12, "normalized_score": 0.75, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8589, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9835, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Herbs Etc.", "im": "Meagan Berry", "total_score": 14, "perfect_score": 18, "normalized_score": 0.777778, "counts": {"healthy": 3, "caution": 2, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Nordstrom", "region": "US", "instock": 0.4451, "status": "severe", "score": 1}, {"marketplace": "Ebay US", "region": "US", "instock": 0.6515, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7143, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9949, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9994, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Kano Labs", "im": "Ty Cann", "total_score": 7, "perfect_score": 9, "normalized_score": 0.777778, "counts": {"healthy": 2, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.2253, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9607, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9993, "status": "healthy", "score": 3}]}, {"brand": "Kleenex", "im": "Jessica Cowley", "total_score": 7, "perfect_score": 9, "normalized_score": 0.777778, "counts": {"healthy": 2, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.4488, "status": "severe", "score": 1}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Weigh Safe", "im": "Jack Sullivan", "total_score": 12, "perfect_score": 15, "normalized_score": 0.8, "counts": {"healthy": 3, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.4522, "status": "severe", "score": 1}, {"marketplace": "Walmart US", "region": "US", "instock": 0.6236, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9034, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 0.9277, "status": "healthy", "score": 3}, {"marketplace": "Lowe's", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Strider", "im": "Steven Hay", "total_score": 17, "perfect_score": 21, "normalized_score": 0.809524, "counts": {"healthy": 4, "caution": 2, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Walmart CA", "region": "CA", "instock": 0.3737, "status": "severe", "score": 1}, {"marketplace": "Ebay US", "region": "US", "instock": 0.7208, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7559, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8756, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9057, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9836, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Select Brands", "im": "Scott Walton", "total_score": 15, "perfect_score": 18, "normalized_score": 0.833333, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.0, "status": "critical", "score": 0}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9129, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9777, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9977, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Swissmar", "im": "Ty Cann", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart CA", "region": "CA", "instock": 0.5758, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9345, "status": "healthy", "score": 3}]}, {"brand": "Atrium - Douglas Laboratories", "im": "McKay Pierce", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8075, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9887, "status": "healthy", "score": 3}]}, {"brand": "LifeScan", "im": "Steven Hay", "total_score": 10, "perfect_score": 12, "normalized_score": 0.833333, "counts": {"healthy": 2, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.6481, "status": "caution", "score": 2}, {"marketplace": "Kroger.com", "region": "US", "instock": 0.7714, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9598, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Molekule", "im": "Georgia Christodoulou", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6776, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Pro-Stat", "im": "Katelyn Dyer", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8295, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9993, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Real Food Blends", "im": "Katelyn Dyer", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8181, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Podium Nutrition", "im": "Georgia Christodoulou", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6831, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Standard Process - Possible", "im": "Jessica Cowley", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7689, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Superior Source", "im": "Peter Slusinski", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7903, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9989, "status": "healthy", "score": 3}]}, {"brand": "The Fragrance Group", "im": "Peter Slusinski", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.568, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9933, "status": "healthy", "score": 3}]}, {"brand": "Timeless Skin Care", "im": "Meagan Berry", "total_score": 5, "perfect_score": 6, "normalized_score": 0.833333, "counts": {"healthy": 1, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.5995, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9997, "status": "healthy", "score": 3}]}, {"brand": "Vitanica", "im": "Meagan Berry", "total_score": 10, "perfect_score": 12, "normalized_score": 0.833333, "counts": {"healthy": 3, "caution": 0, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.4896, "status": "severe", "score": 1}, {"marketplace": "Target+", "region": "US", "instock": 0.8532, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8624, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9787, "status": "healthy", "score": 3}]}, {"brand": "Cross", "im": "Matt Humphries", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.5179, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7816, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9812, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Kreg", "im": "Jack Maley", "total_score": 26, "perfect_score": 30, "normalized_score": 0.866667, "counts": {"healthy": 6, "caution": 4, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.5341, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7541, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.7751, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.8385, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9771, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9902, "status": "healthy", "score": 3}, {"marketplace": "Best Buy CA", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart CA", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Best Buy CA", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "LEATHERMAN", "im": "Jack Maley", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6962, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.7627, "status": "caution", "score": 2}, {"marketplace": "Walmart CA", "region": "CA", "instock": 0.973, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9929, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Metagenics", "im": "Scott Walton", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.7613, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.8308, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9012, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.992, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9963, "status": "healthy", "score": 3}]}, {"brand": "Lively", "im": "Ty Cann", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Kohl's", "region": "US", "instock": 0.7308, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7346, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Lodge Manufacturing Company", "im": "Jack Sullivan", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.7208, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.7955, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.8948, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9832, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Swanson", "im": "McKay Pierce", "total_score": 13, "perfect_score": 15, "normalized_score": 0.866667, "counts": {"healthy": 3, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.7478, "status": "caution", "score": 2}, {"marketplace": "Ebay US", "region": "US", "instock": 0.8165, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9208, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 0.9226, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9885, "status": "healthy", "score": 3}]}, {"brand": "Glanbia Performance Nutrition", "im": "Ben Draper", "total_score": 21, "perfect_score": 24, "normalized_score": 0.875, "counts": {"healthy": 7, "caution": 0, "severe": 0, "critical": 1}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.1063, "status": "critical", "score": 0}, {"marketplace": "Kroger.com", "region": "US", "instock": 0.9211, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9447, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.974, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9833, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 0.9944, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Hearst Media Services", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "G-Form", "im": "Steven Hay", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.8389, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9129, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9871, "status": "healthy", "score": 3}]}, {"brand": "Harry's", "im": "Jack Sullivan", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7673, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9926, "status": "healthy", "score": 3}, {"marketplace": "Walmart CA", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Klean Kanteen", "im": "Jessica Cowley", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6852, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.891, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9373, "status": "healthy", "score": 3}]}, {"brand": "Queen of the Thrones", "im": "Katelyn Dyer", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.5756, "status": "caution", "score": 2}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9106, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9752, "status": "healthy", "score": 3}]}, {"brand": "ResMed", "im": "Jack Maley", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.5937, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9667, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9768, "status": "healthy", "score": 3}]}, {"brand": "Superfeet", "im": "Matt Goodwin", "total_score": 16, "perfect_score": 18, "normalized_score": 0.888889, "counts": {"healthy": 4, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.7134, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.7461, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8563, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9935, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9998, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "TUMI", "im": "Matt Goodwin", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.5616, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9924, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Brownmed", "im": "Ty Cann", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8392, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9577, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9941, "status": "healthy", "score": 3}]}, {"brand": "GE Appliances", "im": "Tiana Christensen", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.5885, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9374, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9544, "status": "healthy", "score": 3}]}, {"brand": "Gimme Beauty", "im": "Jessica Cowley", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8059, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9996, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Kevin Murphy", "im": "Tiana Christensen", "total_score": 8, "perfect_score": 9, "normalized_score": 0.888889, "counts": {"healthy": 2, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7402, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9496, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Sylvania", "im": "Jessica Cowley", "total_score": 30, "perfect_score": 33, "normalized_score": 0.909091, "counts": {"healthy": 9, "caution": 1, "severe": 1, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.3051, "status": "severe", "score": 1}, {"marketplace": "Macys.com", "region": "US", "instock": 0.6266, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.8772, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8948, "status": "healthy", "score": 3}, {"marketplace": "Best Buy US", "region": "US", "instock": 0.9146, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9894, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}, {"marketplace": "Walmart CA", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Kroger.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Lowe's", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "FINIS", "im": "Ben Draper", "total_score": 22, "perfect_score": 24, "normalized_score": 0.916667, "counts": {"healthy": 6, "caution": 2, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7893, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.8318, "status": "caution", "score": 2}, {"marketplace": "Macys.com", "region": "US", "instock": 0.9184, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9487, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9728, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Pura", "im": "Scott Walton", "total_score": 11, "perfect_score": 12, "normalized_score": 0.916667, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.6669, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9177, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.994, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Adaptive Sound Technologies", "im": "Ben Draper", "total_score": 11, "perfect_score": 12, "normalized_score": 0.916667, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Best Buy US", "region": "US", "instock": 0.7838, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9667, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9696, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "MegaFood", "im": "McKay Pierce", "total_score": 11, "perfect_score": 12, "normalized_score": 0.916667, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.7503, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9858, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Panasonic CE", "im": "Meagan Berry", "total_score": 11, "perfect_score": 12, "normalized_score": 0.916667, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6831, "status": "caution", "score": 2}, {"marketplace": "Macys.com", "region": "US", "instock": 0.8592, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.8656, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9883, "status": "healthy", "score": 3}]}, {"brand": "The Genius Brand", "im": "Meagan Berry", "total_score": 11, "perfect_score": 12, "normalized_score": 0.916667, "counts": {"healthy": 3, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8142, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.9884, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Davinci Laboratories", "im": "Meagan Berry", "total_score": 14, "perfect_score": 15, "normalized_score": 0.933333, "counts": {"healthy": 4, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.6254, "status": "caution", "score": 2}, {"marketplace": "Target+", "region": "US", "instock": 0.9645, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.996, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Philips Norelco", "im": "Meagan Berry", "total_score": 14, "perfect_score": 15, "normalized_score": 0.933333, "counts": {"healthy": 4, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.7299, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9713, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Roxy - The Levy Group", "im": "Matt Humphries", "total_score": 14, "perfect_score": 15, "normalized_score": 0.933333, "counts": {"healthy": 4, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.652, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.984, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9843, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9843, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Twinlab Consolidation Corporation", "im": "Tommy Sutter", "total_score": 14, "perfect_score": 15, "normalized_score": 0.933333, "counts": {"healthy": 4, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.827, "status": "caution", "score": 2}, {"marketplace": "Macys.com", "region": "US", "instock": 0.8908, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9182, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9912, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9991, "status": "healthy", "score": 3}]}, {"brand": "Blendtec", "im": "Jack Sullivan", "total_score": 17, "perfect_score": 18, "normalized_score": 0.944444, "counts": {"healthy": 5, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.5363, "status": "caution", "score": 2}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.8741, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Yogi", "im": "McKay Pierce", "total_score": 17, "perfect_score": 18, "normalized_score": 0.944444, "counts": {"healthy": 5, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.8243, "status": "caution", "score": 2}, {"marketplace": "Walmart US", "region": "US", "instock": 0.8918, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9066, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 0.9742, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart CA", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Host Defense", "im": "Katelyn Dyer", "total_score": 17, "perfect_score": 18, "normalized_score": 0.944444, "counts": {"healthy": 5, "caution": 1, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.7735, "status": "caution", "score": 2}, {"marketplace": "TikTok US", "region": "US", "instock": 0.925, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9349, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 0.9875, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9986, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Atrium - Klean Athlete", "im": "McKay Pierce", "total_score": 15, "perfect_score": 15, "normalized_score": 1.0, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.9116, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9987, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Atrium - Pure Encapsulations", "im": "McKay Pierce", "total_score": 21, "perfect_score": 21, "normalized_score": 1.0, "counts": {"healthy": 7, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9731, "status": "healthy", "score": 3}, {"marketplace": "Shopify US", "region": "US", "instock": 0.9867, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9923, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9964, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9972, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Atrium - Seroyal", "im": "McKay Pierce", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9752, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9866, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Bariatric Advantage", "im": "Scott Walton", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9429, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9993, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Claritag", "im": "Ben Draper", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "DIVA", "im": "Katelyn Dyer", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Dr Mercola", "im": "Ben Draper", "total_score": 18, "perfect_score": 18, "normalized_score": 1.0, "counts": {"healthy": 6, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8673, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9666, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 0.991, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9914, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9931, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Fill Rite", "im": "Meagan Berry", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.8674, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9832, "status": "healthy", "score": 3}]}, {"brand": "Flora Health", "im": "Ty Cann", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8862, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9074, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.982, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9952, "status": "healthy", "score": 3}]}, {"brand": "New Chapter", "im": "Jack Sullivan", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Pandora", "im": "Steven Hay", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9301, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9492, "status": "healthy", "score": 3}]}, {"brand": "Quicksilver Scientific", "im": "Tommy Sutter", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Nordstrom", "region": "US", "instock": 0.9314, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9998, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Sakura", "im": "Jessica Cowley", "total_score": 15, "perfect_score": 15, "normalized_score": 1.0, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8956, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 0.9702, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9827, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9981, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9982, "status": "healthy", "score": 3}]}, {"brand": "SmartMouth", "im": "Tiana Christensen", "total_score": 18, "perfect_score": 18, "normalized_score": 1.0, "counts": {"healthy": 6, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.9911, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Shopify US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Spanx", "im": "Matt Goodwin", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "CA", "instock": 0.8573, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9949, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Thorne Research", "im": "Tommy Sutter", "total_score": 15, "perfect_score": 15, "normalized_score": 1.0, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9123, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9509, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9572, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 0.9839, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}]}, {"brand": "Wahl Pro Animal", "im": "Peter Slusinski", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9997, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "CA", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Bradshaw Home", "im": "Ben Draper", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Little Giant", "im": "Meagan Berry", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "US", "instock": 0.9048, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9452, "status": "healthy", "score": 3}]}, {"brand": "Minky Couture", "im": "McKay Pierce", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nite Ize", "im": "Meagan Berry", "total_score": 15, "perfect_score": 15, "normalized_score": 1.0, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9769, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Turbie Twist", "im": "Jack Maley", "total_score": 24, "perfect_score": 24, "normalized_score": 1.0, "counts": {"healthy": 8, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Kroger.com", "region": "US", "instock": 0.9286, "status": "healthy", "score": 3}, {"marketplace": "Amazon.ca", "region": "US", "instock": 0.9587, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 0.9916, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9997, "status": "healthy", "score": 3}, {"marketplace": "Kohl's", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "AdvoCare", "im": "Jessica Cowley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9999, "status": "healthy", "score": 3}]}, {"brand": "AmerOmega", "im": "Scott Walton", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Antica Farmacista", "im": "Ty Cann", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9474, "status": "healthy", "score": 3}]}, {"brand": "Balance of Nature", "im": "Tommy Sutter", "total_score": 21, "perfect_score": 21, "normalized_score": 1.0, "counts": {"healthy": 7, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9993, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Barimelts", "im": "Jack Sullivan", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Bath & Body Works", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Bayer", "im": "Meagan Berry", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.899, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9337, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "BD", "im": "Georgia Christodoulou", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "CE Smith", "im": "Ben Draper", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9917, "status": "healthy", "score": 3}]}, {"brand": "Choice Organics", "im": "McKay Pierce", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Unknown", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "ColonBroom", "im": "Ben Draper", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Delta Faucet", "im": "Jack Sullivan", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.855, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9568, "status": "healthy", "score": 3}]}, {"brand": "Demdaco", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9062, "status": "healthy", "score": 3}]}, {"brand": "Dermacare", "im": "Jack Maley", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Designs for Health", "im": "Peter Slusinski", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.995, "status": "healthy", "score": 3}]}, {"brand": "Dr. Emil", "im": "Jessica Cowley", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.872, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9961, "status": "healthy", "score": 3}]}, {"brand": "Dr. G", "im": "Tiana Christensen", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Dr. Schulze's", "im": "Ty Cann", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.9292, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9986, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Emerald Laboratories", "im": "Ty Cann", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9134, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9978, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "EZ Melts", "im": "Jack Sullivan", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9462, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9994, "status": "healthy", "score": 3}]}, {"brand": "Fiskars", "im": "Scott Walton", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Franklin Brass", "im": "Georgia Christodoulou", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.915, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9793, "status": "healthy", "score": 3}]}, {"brand": "FullWell", "im": "Tiana Christensen", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9961, "status": "healthy", "score": 3}]}, {"brand": "Gaia Herbs", "im": "Jack Maley", "total_score": 18, "perfect_score": 18, "normalized_score": 1.0, "counts": {"healthy": 6, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.96, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9671, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9933, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9934, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Gaia Pro", "im": "Jack Maley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9905, "status": "healthy", "score": 3}]}, {"brand": "Garanimals", "im": "Steven Hay", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9978, "status": "healthy", "score": 3}]}, {"brand": "GAT Sport", "im": "John Alexander", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.9499, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Gerber Gear", "im": "Scott Walton", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9618, "status": "healthy", "score": 3}]}, {"brand": "GNC", "im": "Georgia Christodoulou", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9001, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9879, "status": "healthy", "score": 3}]}, {"brand": "Golf Pride", "im": "Georgia Christodoulou", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9956, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Hims & Hers", "im": "Katelyn Dyer", "total_score": 18, "perfect_score": 18, "normalized_score": 1.0, "counts": {"healthy": 6, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9805, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Huber", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9834, "status": "healthy", "score": 3}]}, {"brand": "Indigo Wild", "im": "Tiana Christensen", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Shopify US", "region": "US", "instock": 0.8571, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9334, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9941, "status": "healthy", "score": 3}]}, {"brand": "Integrative Therapeutics", "im": "Tiana Christensen", "total_score": 15, "perfect_score": 15, "normalized_score": 1.0, "counts": {"healthy": 5, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9414, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Iovate", "im": "Ty Cann", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9506, "status": "healthy", "score": 3}]}, {"brand": "Isagenix", "im": "Ty Cann", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9817, "status": "healthy", "score": 3}]}, {"brand": "Johnny Slicks", "im": "Ty Cann", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Keeps", "im": "John Alexander", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Kori Krill", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9974, "status": "healthy", "score": 3}]}, {"brand": "Kyolic", "im": "Jack Sullivan", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.999, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "LICKS", "im": "Jessica Cowley", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Macys.com", "region": "US", "instock": 0.8929, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9992, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "LiftMaster", "im": "Jessica Cowley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9852, "status": "healthy", "score": 3}]}, {"brand": "Maven Lane", "im": "Georgia Christodoulou", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Mind Games", "im": "Peter Slusinski", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9067, "status": "healthy", "score": 3}]}, {"brand": "Natural Factors", "im": "Jack Sullivan", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9449, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9984, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nature's Way", "im": "Meagan Berry", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9988, "status": "healthy", "score": 3}]}, {"brand": "NatureBell", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9997, "status": "healthy", "score": 3}]}, {"brand": "Nutrex Hawaii, Inc.", "im": "Jack Sullivan", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9794, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Duocal", "im": "Katelyn Dyer", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Fortini", "im": "Katelyn Dyer", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Kroger.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Functional Formularies", "im": "Katelyn Dyer", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Nutricia - Liquigen", "im": "Katelyn Dyer", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Kroger.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Obvi", "im": "Katelyn Dyer", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Macys.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Nordstrom", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Panos", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9479, "status": "healthy", "score": 3}]}, {"brand": "Parts Master", "im": "Tiana Christensen", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9464, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Paslode", "im": "Peter Slusinski", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Ebay US", "region": "US", "instock": 0.9227, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9598, "status": "healthy", "score": 3}]}, {"brand": "PRN Pharmacal", "im": "Jack Maley", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Prominent Nutrition", "im": "Jack Sullivan", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9872, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Protocol For Life Balance", "im": "Jessica Cowley", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.8707, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9861, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Royal Talens", "im": "Jessica Cowley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.873, "status": "healthy", "score": 3}]}, {"brand": "Salus", "im": "Jack Maley", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9954, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "See Kai Run", "im": "Matt Goodwin", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9253, "status": "healthy", "score": 3}, {"marketplace": "Buy With Prime", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Seeking Health", "im": "Meagan Berry", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.9579, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9762, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.979, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9963, "status": "healthy", "score": 3}]}, {"brand": "SiO Beauty", "im": "Scott Walton", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9264, "status": "healthy", "score": 3}]}, {"brand": "SiS", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9961, "status": "healthy", "score": 3}]}, {"brand": "Skull Shaver", "im": "Ben Draper", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9987, "status": "healthy", "score": 3}]}, {"brand": "Spectra Baby", "im": "Scott Walton", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9719, "status": "healthy", "score": 3}]}, {"brand": "Standard Process - Core", "im": "Jessica Cowley", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9977, "status": "healthy", "score": 3}, {"marketplace": "Ebay US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Standard Process - Spirited Paw", "im": "Jessica Cowley", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Standard Process - Veterinary Formulas", "im": "Jessica Cowley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9971, "status": "healthy", "score": 3}]}, {"brand": "Steelcase", "im": "Tiana Christensen", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9562, "status": "healthy", "score": 3}]}, {"brand": "ThriveOn", "im": "Matt Humphries", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Uqora", "im": "Katelyn Dyer", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Vetoquinol", "im": "Katelyn Dyer", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9994, "status": "healthy", "score": 3}]}, {"brand": "Vetriscience", "im": "Jack Maley", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Volcom - The Levy Group", "im": "Matt Humphries", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.8929, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9511, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Watkins Wellness", "im": "Meagan Berry", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Weider", "im": "Peter Slusinski", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9344, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Wiley's Finest", "im": "Scott Walton", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.972, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Willow Tree", "im": "Georgia Christodoulou", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9748, "status": "healthy", "score": 3}]}, {"brand": "Wisdom Panel", "im": "Steven Hay", "total_score": 9, "perfect_score": 9, "normalized_score": 1.0, "counts": {"healthy": 3, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Target+", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Xymogen", "im": "Matt Humphries", "total_score": 6, "perfect_score": 6, "normalized_score": 1.0, "counts": {"healthy": 2, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.972, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9999, "status": "healthy", "score": 3}]}, {"brand": "Youtheory", "im": "Tiana Christensen", "total_score": 12, "perfect_score": 12, "normalized_score": 1.0, "counts": {"healthy": 4, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Target+", "region": "US", "instock": 0.9044, "status": "healthy", "score": 3}, {"marketplace": "Walmart US", "region": "US", "instock": 0.9788, "status": "healthy", "score": 3}, {"marketplace": "TikTok US", "region": "US", "instock": 0.9931, "status": "healthy", "score": 3}, {"marketplace": "Amazon.com", "region": "US", "instock": 0.9976, "status": "healthy", "score": 3}]}, {"brand": "Zahler", "im": "Georgia Christodoulou", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Amazon.com", "region": "US", "instock": 0.9979, "status": "healthy", "score": 3}]}, {"brand": "NOW", "im": "John Alexander", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Skinfix", "im": "John Alexander", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Tru Niagen", "im": "John Alexander", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 1.0, "status": "healthy", "score": 3}]}, {"brand": "Vital Proteins", "im": "John Alexander", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "TikTok US", "region": "US", "instock": 0.9891, "status": "healthy", "score": 3}]}, {"brand": "EltaMD", "im": "Jack Sullivan", "total_score": 3, "perfect_score": 3, "normalized_score": 1.0, "counts": {"healthy": 1, "caution": 0, "severe": 0, "critical": 0}, "marketplaces": [{"marketplace": "Walmart US", "region": "US", "instock": 0.9856, "status": "healthy", "score": 3}]}], "summary": {"caution": [{"brand": "ZQuiet", "marketplace": "Amazon.com", "instock": 0.5, "region": "US"}, {"brand": "DKB Household", "marketplace": "TikTok US", "instock": 0.5068, "region": "US"}, {"brand": "Forever 21 - Mark Edwards", "marketplace": "Amazon.com", "instock": 0.5109, "region": "US"}, {"brand": "Cross", "marketplace": "Walmart US", "instock": 0.5179, "region": "US"}, {"brand": "Parkside Optical Inc.", "marketplace": "Walmart US", "instock": 0.5239, "region": "US"}, {"brand": "Kreg", "marketplace": "Target+", "instock": 0.5341, "region": "US"}, {"brand": "Blendtec", "marketplace": "Amazon.ca", "instock": 0.5363, "region": "CA"}, {"brand": "TUMI", "marketplace": "Amazon.ca", "instock": 0.5616, "region": "CA"}, {"brand": "FPX-AIR", "marketplace": "Amazon.com", "instock": 0.5645, "region": "US"}, {"brand": "The Fragrance Group", "marketplace": "Macys.com", "instock": 0.568, "region": "US"}, {"brand": "Shaquille O'Neal - Falic Fashion Group", "marketplace": "Amazon.com", "instock": 0.5714, "region": "US"}, {"brand": "Queen of the Thrones", "marketplace": "Walmart US", "instock": 0.5756, "region": "US"}, {"brand": "Swissmar", "marketplace": "Walmart CA", "instock": 0.5758, "region": "CA"}, {"brand": "Garden of Life", "marketplace": "Amazon.com", "instock": 0.5812, "region": "US"}, {"brand": "GE Appliances", "marketplace": "Walmart US", "instock": 0.5885, "region": "US"}, {"brand": "ResMed", "marketplace": "Amazon.ca", "instock": 0.5937, "region": "CA"}, {"brand": "Timeless Skin Care", "marketplace": "Walmart US", "instock": 0.5995, "region": "US"}, {"brand": "Reebok - Vitalist", "marketplace": "Amazon.com", "instock": 0.6, "region": "US"}, {"brand": "EarthKind", "marketplace": "Walmart US", "instock": 0.6021, "region": "US"}, {"brand": "Weigh Safe", "marketplace": "Walmart US", "instock": 0.6236, "region": "US"}, {"brand": "Davinci Laboratories", "marketplace": "Walmart US", "instock": 0.6254, "region": "US"}, {"brand": "Sylvania", "marketplace": "Macys.com", "instock": 0.6266, "region": "US"}, {"brand": "Feetures", "marketplace": "Target+", "instock": 0.6295, "region": "US"}, {"brand": "Philips Avent", "marketplace": "Ebay US", "instock": 0.6364, "region": "US"}, {"brand": "Coastal Pet", "marketplace": "Walmart US", "instock": 0.6369, "region": "US"}, {"brand": "Panasonic", "marketplace": "Amazon.ca", "instock": 0.6392, "region": "CA"}, {"brand": "LifeScan", "marketplace": "Target+", "instock": 0.6481, "region": "US"}, {"brand": "Herbs Etc.", "marketplace": "Ebay US", "instock": 0.6515, "region": "US"}, {"brand": "Roxy - The Levy Group", "marketplace": "TikTok US", "instock": 0.652, "region": "US"}, {"brand": "Pura", "marketplace": "Macys.com", "instock": 0.6669, "region": "US"}, {"brand": "Australian Dream", "marketplace": "Walmart US", "instock": 0.6737, "region": "US"}, {"brand": "Molekule", "marketplace": "Walmart US", "instock": 0.6776, "region": "US"}, {"brand": "Podium Nutrition", "marketplace": "Walmart US", "instock": 0.6831, "region": "US"}, {"brand": "Panasonic CE", "marketplace": "Walmart US", "instock": 0.6831, "region": "US"}, {"brand": "Klean Kanteen", "marketplace": "Walmart US", "instock": 0.6852, "region": "US"}, {"brand": "Lewis Lifetime Tools (Yard Butler)", "marketplace": "Walmart US", "instock": 0.6891, "region": "US"}, {"brand": "LEATHERMAN", "marketplace": "Walmart US", "instock": 0.6962, "region": "US"}, {"brand": "EarthKind", "marketplace": "Amazon.com", "instock": 0.6984, "region": "US"}, {"brand": "Panasonic", "marketplace": "Walmart US", "instock": 0.6986, "region": "US"}, {"brand": "Feetures", "marketplace": "Hearst Media Services", "instock": 0.7036, "region": "US"}, {"brand": "Forever 21 - Brands Unlimited", "marketplace": "Target+", "instock": 0.7111, "region": "US"}, {"brand": "Superfeet", "marketplace": "Macys.com", "instock": 0.7134, "region": "US"}, {"brand": "Herbs Etc.", "marketplace": "Walmart US", "instock": 0.7143, "region": "US"}, {"brand": "Strider", "marketplace": "Ebay US", "instock": 0.7208, "region": "US"}, {"brand": "Lodge Manufacturing Company", "marketplace": "Ebay US", "instock": 0.7208, "region": "US"}, {"brand": "Philips Norelco", "marketplace": "Walmart US", "instock": 0.7299, "region": "US"}, {"brand": "Lively", "marketplace": "Kohl's", "instock": 0.7308, "region": "US"}, {"brand": "Lively", "marketplace": "Walmart US", "instock": 0.7346, "region": "US"}, {"brand": "Lewis Lifetime Tools (Yard Butler)", "marketplace": "Kohl's", "instock": 0.7395, "region": "US"}, {"brand": "Kevin Murphy", "marketplace": "Walmart US", "instock": 0.7402, "region": "US"}, {"brand": "Superfeet", "marketplace": "Target+", "instock": 0.7461, "region": "US"}, {"brand": "Swanson", "marketplace": "Target+", "instock": 0.7478, "region": "US"}, {"brand": "Forever 21 - Brands Unlimited", "marketplace": "Ebay US", "instock": 0.7481, "region": "US"}, {"brand": "Forever 21 - Brands Unlimited", "marketplace": "Kohl's", "instock": 0.7481, "region": "US"}, {"brand": "FROG", "marketplace": "Walmart US", "instock": 0.7488, "region": "US"}, {"brand": "MegaFood", "marketplace": "Target+", "instock": 0.7503, "region": "US"}, {"brand": "Kreg", "marketplace": "Walmart US", "instock": 0.7541, "region": "US"}, {"brand": "DKB Household", "marketplace": "Walmart US", "instock": 0.7554, "region": "US"}, {"brand": "Strider", "marketplace": "Target+", "instock": 0.7559, "region": "US"}, {"brand": "Wonderfold", "marketplace": "Amazon.com", "instock": 0.7606, "region": "US"}, {"brand": "Metagenics", "marketplace": "Target+", "instock": 0.7613, "region": "US"}, {"brand": "EarthKind", "marketplace": "Target+", "instock": 0.7619, "region": "US"}, {"brand": "LEATHERMAN", "marketplace": "Ebay US", "instock": 0.7627, "region": "US"}, {"brand": "Garden of Life", "marketplace": "Walmart US", "instock": 0.7643, "region": "US"}, {"brand": "Harry's", "marketplace": "Walmart US", "instock": 0.7673, "region": "US"}, {"brand": "Australian Dream", "marketplace": "Target+", "instock": 0.7682, "region": "US"}, {"brand": "Standard Process - Possible", "marketplace": "Walmart US", "instock": 0.7689, "region": "US"}, {"brand": "LifeScan", "marketplace": "Kroger.com", "instock": 0.7714, "region": "US"}, {"brand": "Host Defense", "marketplace": "Target+", "instock": 0.7735, "region": "US"}, {"brand": "Kreg", "marketplace": "Ebay US", "instock": 0.7751, "region": "US"}, {"brand": "Parkside Optical Inc.", "marketplace": "Ebay US", "instock": 0.7765, "region": "US"}, {"brand": "Philips Sonicare", "marketplace": "Ebay US", "instock": 0.779, "region": "US"}, {"brand": "Cross", "marketplace": "Target+", "instock": 0.7816, "region": "US"}, {"brand": "Adaptive Sound Technologies", "marketplace": "Best Buy US", "instock": 0.7838, "region": "US"}, {"brand": "Panasonic", "marketplace": "Target+", "instock": 0.7849, "region": "US"}, {"brand": "FINIS", "marketplace": "Walmart US", "instock": 0.7893, "region": "US"}, {"brand": "Superior Source", "marketplace": "Walmart US", "instock": 0.7903, "region": "US"}, {"brand": "AmScope", "marketplace": "Amazon.com", "instock": 0.7911, "region": "US"}, {"brand": "Lodge Manufacturing Company", "marketplace": "Walmart US", "instock": 0.7955, "region": "US"}, {"brand": "Feetures", "marketplace": "Walmart US", "instock": 0.7974, "region": "US"}, {"brand": "Feetures", "marketplace": "TikTok US", "instock": 0.7977, "region": "US"}, {"brand": "Gimme Beauty", "marketplace": "Walmart US", "instock": 0.8059, "region": "US"}, {"brand": "Atrium - Douglas Laboratories", "marketplace": "Walmart US", "instock": 0.8075, "region": "US"}, {"brand": "Goodyear", "marketplace": "Amazon.ca", "instock": 0.8123, "region": "US"}, {"brand": "The Genius Brand", "marketplace": "Walmart US", "instock": 0.8142, "region": "US"}, {"brand": "Swanson", "marketplace": "Ebay US", "instock": 0.8165, "region": "US"}, {"brand": "Nutricia - Real Food Blends", "marketplace": "Walmart US", "instock": 0.8181, "region": "US"}, {"brand": "Yogi", "marketplace": "Target+", "instock": 0.8243, "region": "US"}, {"brand": "Twinlab Consolidation Corporation", "marketplace": "Walmart US", "instock": 0.827, "region": "US"}, {"brand": "Coastal Pet", "marketplace": "Amazon.ca", "instock": 0.8274, "region": "CA"}, {"brand": "Wahl Pro Barber/Stylist", "marketplace": "Ebay US", "instock": 0.8286, "region": "US"}, {"brand": "Nutricia - Pro-Stat", "marketplace": "Walmart US", "instock": 0.8295, "region": "US"}, {"brand": "Metagenics", "marketplace": "TikTok US", "instock": 0.8308, "region": "US"}, {"brand": "FINIS", "marketplace": "Target+", "instock": 0.8318, "region": "US"}, {"brand": "Victorinox", "marketplace": "Amazon.com", "instock": 0.8331, "region": "US"}, {"brand": "Kreg", "marketplace": "TikTok US", "instock": 0.8385, "region": "US"}, {"brand": "G-Form", "marketplace": "Amazon.ca", "instock": 0.8389, "region": "CA"}, {"brand": "Brownmed", "marketplace": "Walmart US", "instock": 0.8392, "region": "US"}, {"brand": "Lewis Lifetime Tools (Yard Butler)", "marketplace": "Ebay US", "instock": 0.843, "region": "US"}, {"brand": "AirCat", "marketplace": "Target+", "instock": 0.8479, "region": "US"}], "severe": [{"brand": "Lovebug", "marketplace": "Amazon.com", "instock": 0.1556, "region": "US"}, {"brand": "Orgain", "marketplace": "Target+", "instock": 0.159, "region": "US"}, {"brand": "Parkside Optical Inc.", "marketplace": "Target+", "instock": 0.1758, "region": "US"}, {"brand": "Lister", "marketplace": "Amazon.com", "instock": 0.1793, "region": "US"}, {"brand": "Genuine Health", "marketplace": "Amazon.ca", "instock": 0.1794, "region": "CA"}, {"brand": "Feetures", "marketplace": "Ebay US", "instock": 0.187, "region": "US"}, {"brand": "LTH", "marketplace": "Amazon.com", "instock": 0.1943, "region": "US"}, {"brand": "Forever 21 - Mark Edwards", "marketplace": "TikTok US", "instock": 0.2197, "region": "US"}, {"brand": "Kano Labs", "marketplace": "Ebay US", "instock": 0.2253, "region": "US"}, {"brand": "Goodyear", "marketplace": "Ebay US", "instock": 0.2377, "region": "US"}, {"brand": "Forever 21 - Mark Edwards", "marketplace": "Walmart US", "instock": 0.2445, "region": "US"}, {"brand": "Forever 21 - Brands Unlimited", "marketplace": "Walmart US", "instock": 0.2849, "region": "US"}, {"brand": "ADATA", "marketplace": "Amazon.ca", "instock": 0.2851, "region": "CA"}, {"brand": "Coastal Pet", "marketplace": "Amazon.ca", "instock": 0.2857, "region": "US"}, {"brand": "Philips Avent", "marketplace": "Walmart US", "instock": 0.29, "region": "US"}, {"brand": "Spicy Spinner", "marketplace": "Walmart US", "instock": 0.3043, "region": "US"}, {"brand": "Sylvania", "marketplace": "Ebay US", "instock": 0.3051, "region": "US"}, {"brand": "Forever 21 - Brands Unlimited", "marketplace": "TikTok US", "instock": 0.3092, "region": "US"}, {"brand": "FROG", "marketplace": "Ebay US", "instock": 0.3155, "region": "US"}, {"brand": "Feetures", "marketplace": "Macys.com", "instock": 0.3327, "region": "US"}, {"brand": "Lockin", "marketplace": "Amazon.com", "instock": 0.34, "region": "US"}, {"brand": "Eagle Creek", "marketplace": "Target+", "instock": 0.3723, "region": "US"}, {"brand": "Lewis Lifetime Tools (Yard Butler)", "marketplace": "Best Buy US", "instock": 0.3731, "region": "US"}, {"brand": "Strider", "marketplace": "Walmart CA", "instock": 0.3737, "region": "CA"}, {"brand": "Nesugar", "marketplace": "Amazon.com", "instock": 0.381, "region": "US"}, {"brand": "Philips Sonicare", "marketplace": "TikTok US", "instock": 0.3868, "region": "US"}, {"brand": "ADATA", "marketplace": "Amazon.com", "instock": 0.3931, "region": "US"}, {"brand": "MediNatura", "marketplace": "Walmart US", "instock": 0.4092, "region": "US"}, {"brand": "God Is My Guide", "marketplace": "Amazon.com", "instock": 0.4286, "region": "US"}, {"brand": "Coastal Pet", "marketplace": "Macys.com", "instock": 0.4295, "region": "US"}, {"brand": "Herbs Etc.", "marketplace": "Nordstrom", "instock": 0.4451, "region": "US"}, {"brand": "Kleenex", "marketplace": "Target+", "instock": 0.4488, "region": "US"}, {"brand": "Weigh Safe", "marketplace": "Ebay US", "instock": 0.4522, "region": "US"}, {"brand": "DKB Household", "marketplace": "Target+", "instock": 0.4545, "region": "US"}, {"brand": "DKB Household", "marketplace": "Kroger.com", "instock": 0.4828, "region": "US"}, {"brand": "Philips Sonicare", "marketplace": "Nordstrom", "instock": 0.4846, "region": "US"}, {"brand": "Vitanica", "marketplace": "Macys.com", "instock": 0.4896, "region": "US"}, {"brand": "FPX-AIR", "marketplace": "Ebay US", "instock": 0.4909, "region": "US"}], "critical": [{"brand": "Rituals", "marketplace": "TikTok US", "instock": 0.0, "region": "US"}, {"brand": "ADATA", "marketplace": "Macys.com", "instock": 0.0, "region": "US"}, {"brand": "ADATA", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "LTH", "marketplace": "TikTok US", "instock": 0.0, "region": "US"}, {"brand": "Victorinox", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "ZQuiet", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "Apex Tool Group", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "Spicy Shelf", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "Parkside Optical Inc.", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "Panasonic", "marketplace": "Amazon.ca", "instock": 0.0, "region": "US"}, {"brand": "Azdome", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "Reebok - Vitalist", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "Koia", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "AirCat", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "Adventure Ready Brands", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "Reebok - Original Fit Factory", "marketplace": "Walmart US", "instock": 0.0, "region": "US"}, {"brand": "Vital Nutrients", "marketplace": "Ebay US", "instock": 0.0, "region": "US"}, {"brand": "Select Brands", "marketplace": "Amazon.ca", "instock": 0.0, "region": "CA"}, {"brand": "KONG", "marketplace": "Amazon.ca", "instock": 0.0175, "region": "CA"}, {"brand": "Kraus", "marketplace": "Walmart US", "instock": 0.0625, "region": "US"}, {"brand": "Wahl Pro Barber/Stylist", "marketplace": "Amazon.ca", "instock": 0.0816, "region": "CA"}, {"brand": "Living Proof", "marketplace": "Walmart US", "instock": 0.0922, "region": "US"}, {"brand": "Allergy Research Group", "marketplace": "Target+", "instock": 0.0964, "region": "US"}, {"brand": "Murad", "marketplace": "Walmart US", "instock": 0.0996, "region": "US"}, {"brand": "AmScope", "marketplace": "Amazon.ca", "instock": 0.1, "region": "CA"}, {"brand": "Glanbia Performance Nutrition", "marketplace": "Amazon.com", "instock": 0.1063, "region": "US"}, {"brand": "Forever 21 - Mark Edwards", "marketplace": "Target+", "instock": 0.1077, "region": "US"}, {"brand": "Australian Dream", "marketplace": "Ebay US", "instock": 0.1193, "region": "US"}]}};
+
+let filteredBrands = [];
+let currentPage = 1;
+const PAGE_SIZE = 30;
+
+function init() {
+  const brands = DASHBOARD_DATA.brands;
+
+  ['caution','severe','critical'].forEach(status => {
+    document.getElementById('count-' + status).textContent = DASHBOARD_DATA.summary[status].length;
+    renderDropdownList(status, DASHBOARD_DATA.summary[status]);
+  });
+
+  const ims = [...new Set(brands.map(b => b.im))].sort();
+  const imFilter = document.getElementById('imFilter');
+  ims.forEach(im => {
+    const opt = document.createElement('option');
+    opt.value = im; opt.textContent = im;
+    imFilter.appendChild(opt);
+  });
+
+  filteredBrands = brands;
+  document.getElementById('brandCount').textContent = brands.length + ' brands';
+  renderBrands();
+}
+
+function toggleSummary(status) {
+  const drop = document.getElementById('drop-' + status);
+  const arrow = document.getElementById('arrow-' + status);
+  const isOpen = drop.classList.contains('open');
+  ['caution','severe','critical'].forEach(s => {
+    document.getElementById('drop-' + s).classList.remove('open');
+    document.getElementById('arrow-' + s).classList.remove('open');
+  });
+  if (!isOpen) {
+    drop.classList.add('open');
+    arrow.classList.add('open');
+  }
+}
+
+function renderDropdownList(status, items, filter='') {
+  const list = document.getElementById('list-' + status);
+  const filtered = filter ? items.filter(i =>
+    i.brand.toLowerCase().includes(filter.toLowerCase()) ||
+    i.marketplace.toLowerCase().includes(filter.toLowerCase())
+  ) : items;
+
+  const colorMap = {caution: 'var(--caution)', severe: 'var(--severe)', critical: 'var(--critical)'};
+  const color = colorMap[status];
+
+  list.innerHTML = filtered.map(item => `
+    <div class="dropdown-item">
+      <div class="dropdown-brand" title="${item.brand}">${item.brand}</div>
+      <div class="dropdown-mp">${item.region} · ${item.marketplace}</div>
+      <div class="dropdown-pct" style="color:${color}">${fmtPct(item.instock)}</div>
+    </div>
+  `).join('');
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-family:DM Mono,monospace;font-size:11px">No results</div>';
+  }
+}
+
+function filterDropdown(status, value) {
+  renderDropdownList(status, DASHBOARD_DATA.summary[status], value);
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const im = document.getElementById('imFilter').value;
+  const statusF = document.getElementById('statusFilter').value;
+
+  filteredBrands = DASHBOARD_DATA.brands.filter(b => {
+    if (search && !b.brand.toLowerCase().includes(search)) return false;
+    if (im && b.im !== im) return false;
+    if (statusF === 'has-critical' && b.counts.critical === 0) return false;
+    if (statusF === 'has-severe' && b.counts.severe === 0) return false;
+    if (statusF === 'has-caution' && b.counts.caution === 0) return false;
+    return true;
+  });
+  currentPage = 1;
+  document.getElementById('brandCount').textContent = filteredBrands.length + ' brands';
+  renderBrands();
+}
+
+function renderBrands() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const page = filteredBrands.slice(start, end);
+  const list = document.getElementById('brandsList');
+
+  list.innerHTML = page.map((b, idx) => {
+    const globalIdx = start + idx;
+    const rank = globalIdx + 1;
+    const hasCritical = b.counts.critical > 0 ? 'has-critical' : '';
+    const hasSevere = b.counts.severe > 0 ? 'has-severe' : '';
+    const pct = b.normalized_score * 100;
+    const scoreColor = pct < 20 ? 'var(--critical)' : pct < 50 ? 'var(--severe)' : pct < 75 ? 'var(--caution)' : 'var(--healthy)';
+    const scoreDisplay = (b.normalized_score * 100).toFixed(1) + '%';
+
+    return `
+    <div class="brand-row ${hasCritical} ${hasSevere}" id="brow-${globalIdx}">
+      <div class="brand-header" onclick="toggleBrand(${globalIdx})">
+        <div class="brand-rank">#${rank}</div>
+        <div class="brand-name" title="${b.brand}">${b.brand}</div>
+        <div class="brand-im">${b.im}</div>
+        <div class="badge-row">
+          ${b.counts.healthy > 0 ? `<span class="badge healthy">${b.counts.healthy}H</span>` : ''}
+          ${b.counts.caution > 0 ? `<span class="badge caution">${b.counts.caution}C</span>` : ''}
+          ${b.counts.severe > 0 ? `<span class="badge severe">${b.counts.severe}S</span>` : ''}
+          ${b.counts.critical > 0 ? `<span class="badge critical">${b.counts.critical}!</span>` : ''}
+        </div>
+        <div class="brand-score-wrap">
+          <div class="brand-score" style="color:${scoreColor}">${scoreDisplay}</div>
+          <div class="brand-score-frac">${b.total_score}/${b.perfect_score}</div>
+          <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${pct}%;background:${scoreColor}"></div></div>
+        </div>
+        <div class="brand-expand-icon" id="icon-${globalIdx}">▼</div>
+      </div>
+      <div class="brand-detail" id="detail-${globalIdx}">
+        <div class="detail-meta">
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Inventory Manager</span>
+            <span class="detail-meta-value" style="color:var(--accent)">${b.im}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Health Score</span>
+            <span class="detail-meta-value" style="color:${scoreColor}">${scoreDisplay} (${b.total_score}/${b.perfect_score})</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Marketplaces</span>
+            <span class="detail-meta-value">${b.marketplaces.length}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Healthy</span>
+            <span class="detail-meta-value" style="color:var(--healthy)">${b.counts.healthy}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Caution</span>
+            <span class="detail-meta-value" style="color:var(--caution)">${b.counts.caution}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Severe</span>
+            <span class="detail-meta-value" style="color:var(--severe)">${b.counts.severe}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-meta-label">Critical</span>
+            <span class="detail-meta-value" style="color:var(--critical)">${b.counts.critical}</span>
+          </div>
+        </div>
+        <table class="mp-table">
+          <thead>
+            <tr>
+              <th>Marketplace</th>
+              <th>Region</th>
+              <th>Instock Rate</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${b.marketplaces.map(mp => `
+              <tr>
+                <td class="mp-name">${mp.marketplace}</td>
+                <td class="mp-region">${mp.region}</td>
+                <td class="mp-pct" style="color:${statusColor(mp.status)}">${fmtPct(mp.instock)}</td>
+                <td>
+                  <div class="instock-bar-wrap">
+                    <div class="instock-bar-fill" style="width:${Math.round(mp.instock*100)}%;background:${statusColor(mp.status)}"></div>
+                  </div>
+                </td>
+                <td><span class="status-pill ${mp.status}">${mp.status}</span></td>
+                <td style="font-family:'DM Mono',monospace;font-size:12px;color:${statusColor(mp.status)}">${mp.score}/3</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    `;
+  }).join('');
+
+  renderPagination();
+}
+
+function toggleBrand(idx) {
+  const detail = document.getElementById('detail-' + idx);
+  const icon = document.getElementById('icon-' + idx);
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  icon.classList.toggle('open', !isOpen);
+}
+
+function renderPagination() {
+  const total = filteredBrands.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, total);
+  document.getElementById('pageInfo').textContent = `Showing ${start}–${end} of ${total} brands`;
+
+  const btns = document.getElementById('pageBtns');
+  btns.innerHTML = '';
+
+  const addBtn = (label, page, active=false, disabled=false) => {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (active ? ' active' : '');
+    btn.textContent = label;
+    btn.disabled = disabled;
+    btn.onclick = () => { currentPage = page; renderBrands(); window.scrollTo({top: 0, behavior:'smooth'}); };
+    btns.appendChild(btn);
+  };
+
+  addBtn('← Prev', currentPage - 1, false, currentPage === 1);
+
+  const range = [];
+  if (totalPages <= 7) {
+    for (let i=1; i<=totalPages; i++) range.push(i);
+  } else {
+    range.push(1);
+    if (currentPage > 3) range.push('...');
+    for (let i = Math.max(2, currentPage-1); i <= Math.min(totalPages-1, currentPage+1); i++) range.push(i);
+    if (currentPage < totalPages - 2) range.push('...');
+    range.push(totalPages);
+  }
+
+  range.forEach(p => {
+    if (p === '...') {
+      const span = document.createElement('span');
+      span.style.cssText = 'padding:5px 4px;color:var(--muted);font-size:11px';
+      span.textContent = '…';
+      btns.appendChild(span);
+    } else {
+      addBtn(p, p, p === currentPage);
+    }
+  });
+
+  addBtn('Next →', currentPage + 1, false, currentPage === totalPages);
+}
+
+function fmtPct(v) {
+  return (v * 100).toFixed(1) + '%';
+}
+function statusColor(s) {
+  return s === 'healthy' ? 'var(--healthy)' : s === 'caution' ? 'var(--caution)' : s === 'severe' ? 'var(--severe)' : 'var(--critical)';
+}
+
+init();
+</script>
+</body>
+</html>
